@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Experiment Logger Pro</title>
+<style>
+body { font-family: Arial; padding: 20px; }
+
+button {
+margin: 5px;
+padding: 12px;
+font-size: 14px;
+border-radius: 8px;
+border: none;
+background: #e0e0e0;
+}
+
+button.active-exclusive { background: #4CAF50; color: white; }
+button.active-parallel { background: #2196F3; color: white; }
+button.active-experiment { background: #1B5E20; color: white; }
+button.stop-active { background: #B71C1C; color: white; }
+
+#timer {
+font-size: 26px;
+margin: 15px 0;
+font-weight: bold;
+}
+
+</style>
+</head>
+<body>
+
+<h2>Experiment Logger Pro</h2>
+
+<label>ID:</label>
+<input type="text" id="participantID">
+
+<button id="startBtn" onclick="startExperiment()">START</button>
+<button id="endBtn" onclick="endExperiment()">ENDE</button>
+<button onclick="undoLast()">UNDO</button>
+
+<div id="timer">00:00:00.000</div>
+
+<h3>Exklusive Blöcke</h3>
+<div id="exclusiveButtons"></div>
+
+<h3>Parallele Kanäle</h3>
+<button id="EKG-Mutter" onclick="toggleParallel('EKG-Mutter', this)">EKG-Mutter</button>
+<button id="EKG-Kind" onclick="toggleParallel('EKG-Kind', this)">EKG-Kind</button>
+
+<script>
+
+let experimentStart = null;
+let experimentEnd = null;
+
+let activeExclusive = null;
+let exclusiveStart = null;
+
+let parallelChannels = {};
+let eventLog = [];
+
+const exclusiveCategories = [
+"Speichel + Fragebogen T0",
+"Freiesspiel + Video",
+"Fragebogen T1",
+"Computeraufgabe",
+"Speichel + Fragebogen T2",
+"Speichel + Fragebogen T3",
+"Speichel + Fragebogen T4",
+"Speichel + Fragebogen T5"
+];
+
+// ===== TIMER =====
+setInterval(() => {
+if (experimentStart && !experimentEnd) {
+let diff = Date.now() - experimentStart;
+document.getElementById("timer").innerText = formatTime(diff);
+}
+}, 10);
+
+function formatTime(ms) {
+let h = Math.floor(ms / 3600000);
+let m = Math.floor((ms % 3600000) / 60000);
+let s = Math.floor((ms % 60000) / 1000);
+let milli = ms % 1000;
+return `${pad(h)}:${pad(m)}:${pad(s)}.${milli.toString().padStart(3,'0')}`;
+}
+
+function pad(n){ return n.toString().padStart(2,'0'); }
+
+function nowString() {
+let d = new Date();
+return d.toLocaleTimeString('de-DE') + "." + d.getMilliseconds().toString().padStart(3,'0');
+}
+
+function todayString() {
+return new Date().toLocaleDateString('de-DE');
+}
+
+// ===== START =====
+function startExperiment() {
+let id = document.getElementById("participantID").value.trim();
+if (!id) { alert("Bitte ID eingeben"); return; }
+if (experimentStart) return;
+
+experimentStart = Date.now();
+document.getElementById("startBtn").classList.add("active-experiment");
+}
+
+// ===== ENDE =====
+function endExperiment() {
+if (!experimentStart || experimentEnd) return;
+
+if (activeExclusive) stopExclusive();
+for (let key in parallelChannels) {
+if (parallelChannels[key]) stopParallel(key);
+}
+
+experimentEnd = Date.now();
+
+eventLog.push({
+ID: document.getElementById("participantID").value,
+Typ: "Experiment",
+Kategorie: "Gesamtexperiment",
+Start: new Date(experimentStart).toLocaleTimeString('de-DE'),
+Ende: new Date(experimentEnd).toLocaleTimeString('de-DE'),
+Dauer: formatTime(experimentEnd - experimentStart),
+Datum: todayString()
+});
+
+document.getElementById("endBtn").classList.add("stop-active");
+
+exportCSV();
+}
+
+// ===== EXKLUSIV =====
+function createExclusiveButtons() {
+let container = document.getElementById("exclusiveButtons");
+exclusiveCategories.forEach(cat => {
+let btn = document.createElement("button");
+btn.innerText = cat;
+btn.onclick = () => toggleExclusive(cat, btn);
+container.appendChild(btn);
+});
+}
+
+function toggleExclusive(cat, btn) {
+if (!experimentStart) { alert("Erst START drücken"); return; }
+
+if (activeExclusive === cat) {
+stopExclusive();
+return;
+}
+
+if (activeExclusive) stopExclusive();
+
+activeExclusive = cat;
+exclusiveStart = Date.now();
+
+document.querySelectorAll("#exclusiveButtons button")
+.forEach(b => b.classList.remove("active-exclusive"));
+
+btn.classList.add("active-exclusive");
+}
+
+function stopExclusive() {
+let now = Date.now();
+
+eventLog.push({
+ID: document.getElementById("participantID").value,
+Typ: "Block",
+Kategorie: activeExclusive,
+Start: new Date(exclusiveStart).toLocaleTimeString('de-DE'),
+Ende: new Date(now).toLocaleTimeString('de-DE'),
+Dauer: formatTime(now - exclusiveStart),
+Datum: todayString()
+});
+
+activeExclusive = null;
+exclusiveStart = null;
+
+document.querySelectorAll("#exclusiveButtons button")
+.forEach(b => b.classList.remove("active-exclusive"));
+}
+
+// ===== PARALLEL =====
+function toggleParallel(cat, btn) {
+if (!experimentStart) { alert("Erst START drücken"); return; }
+
+if (parallelChannels[cat]) {
+stopParallel(cat);
+btn.classList.remove("active-parallel");
+} else {
+parallelChannels[cat] = Date.now();
+btn.classList.add("active-parallel");
+}
+}
+
+function stopParallel(cat) {
+let now = Date.now();
+
+eventLog.push({
+ID: document.getElementById("participantID").value,
+Typ: "Parallel",
+Kategorie: cat,
+Start: new Date(parallelChannels[cat]).toLocaleTimeString('de-DE'),
+Ende: new Date(now).toLocaleTimeString('de-DE'),
+Dauer: formatTime(now - parallelChannels[cat]),
+Datum: todayString()
+});
+
+parallelChannels[cat] = null;
+}
+
+// ===== UNDO =====
+function undoLast() {
+if (eventLog.length === 0) return;
+eventLog.pop();
+alert("Letzter Eintrag entfernt.");
+}
+
+// ===== CSV =====
+function exportCSV() {
+let id = document.getElementById("participantID").value;
+let today = todayString().replace(/\./g,"-");
+
+let csv = "ID,Typ,Kategorie,Start,Ende,Dauer,Datum\n";
+eventLog.forEach(r=>{
+csv += `${r.ID},${r.Typ},${r.Kategorie},${r.Start},${r.Ende},${r.Dauer},${r.Datum}\n`;
+});
+
+let blob = new Blob([csv], {type:'text/csv'});
+let a = document.createElement("a");
+a.href = URL.createObjectURL(blob);
+a.download = id + "_" + today + ".csv";
+a.click();
+}
+
+createExclusiveButtons();
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./service-worker.js')
+    .then(() => console.log("Service Worker registriert"));
+}
+</script>
+
+<link rel="manifest" href="manifest.json">
+
+</body>
+</html>
