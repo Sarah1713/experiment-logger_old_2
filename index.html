@@ -3,34 +3,69 @@
 <head>
 <meta charset="UTF-8">
 <title>Experiment Logger Pro</title>
-<link rel="manifest" href="manifest.json">
-<style>
-body { font-family: Arial; padding: 20px; }
 
+<link rel="manifest" href="manifest.json">
+
+<style>
+body { 
+  font-family: Arial; 
+  padding: 20px; 
+  background: #ffffff;
+}
+
+/* Standard Button */
 button {
   margin: 5px;
   padding: 12px;
   font-size: 14px;
   border-radius: 8px;
   border: none;
-  background: #e0e0e0;
+  background: #f2f2f2;
+  transition: 0.2s;
 }
 
-button.active-exclusive { background: #4CAF50; color: white; }
-button.active-parallel { background: #2196F3; color: white; }
-button.active-experiment { background: #1B5E20; color: white; }
-button.stop-active { background: #B71C1C; color: white; }
+/* ===== Exklusive Blöcke (Türkis - Logo Hauptfarbe) ===== */
+button.active-exclusive { 
+  background: #309394; 
+  color: white; 
+}
+
+/* ===== Parallele Kanäle (Korall - Logo Akzentfarbe) ===== */
+button.active-parallel { 
+  background: #EB897A; 
+  color: white; 
+}
+
+/* ===== START (dunkleres Türkis) ===== */
+button.active-experiment { 
+  background: #267879; 
+  color: white; 
+}
+
+/* ===== ENDE (dunkleres Korall) ===== */
+button.stop-active { 
+  background: #D96E5E; 
+  color: white; 
+}
+
+/* Hover Effekt */
+button:hover {
+  opacity: 0.85;
+  cursor: pointer;
+}
 
 #timer {
   font-size: 26px;
   margin: 15px 0;
   font-weight: bold;
+  color: #309394;
 }
 </style>
+
 </head>
 <body>
 
-<h2>Experiment Logger Pro</h2>
+<h2 style="color:#309394;">Experiment Logger Pro</h2>
 
 <label>ID:</label>
 <input type="text" id="participantID">
@@ -41,10 +76,10 @@ button.stop-active { background: #B71C1C; color: white; }
 
 <div id="timer">00:00:00.000</div>
 
-<h3>Exklusive Blöcke</h3>
+<h3 style="color:#309394;">Exklusive Blöcke</h3>
 <div id="exclusiveButtons"></div>
 
-<h3>Parallele Kanäle</h3>
+<h3 style="color:#EB897A;">Parallele Kanäle</h3>
 <button id="EKG-Mutter" onclick="toggleParallel('EKG-Mutter', this)">EKG-Mutter</button>
 <button id="EKG-Kind" onclick="toggleParallel('EKG-Kind', this)">EKG-Kind</button>
 
@@ -86,11 +121,6 @@ function formatTime(ms) {
 
 function pad(n){ return n.toString().padStart(2,'0'); }
 
-function nowString() {
-  let d = new Date();
-  return d.toLocaleTimeString('de-DE') + "." + d.getMilliseconds().toString().padStart(3,'0');
-}
-
 function todayString() {
   return new Date().toLocaleDateString('de-DE');
 }
@@ -100,6 +130,7 @@ function startExperiment() {
   let id = document.getElementById("participantID").value.trim();
   if (!id) { alert("Bitte ID eingeben"); return; }
   if (experimentStart) return;
+
   experimentStart = Date.now();
   document.getElementById("startBtn").classList.add("active-experiment");
 }
@@ -233,7 +264,6 @@ function exportCSV() {
   a.click();
 }
 
-// ===== INITIAL =====
 createExclusiveButtons();
 
 // ===== SERVICE WORKER =====
